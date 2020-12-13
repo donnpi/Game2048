@@ -1,8 +1,15 @@
+// 获取设备屏幕宽度
+documentWidth = window.screen.availWidth
+gridContainerWidth = 0.92 * documentWidth
+cellSideLength = 0.18 * documentWidth // 小方块边长
+cellSpace = 0.04 * documentWidth // 方块间距
+
 function getPosTop (i) {
-	return 20 + i * 120
+	return cellSpace + i * (cellSpace + cellSideLength)
 }
 function getPosLeft (j) {
-	return 20 + j * 120
+	return cellSpace + j * (cellSpace + cellSideLength)
+
 }
 function getNumberBackgroundColor (num) {
 	switch (num) {
@@ -103,6 +110,12 @@ function noBlockHorizontal (row, col1, col2, board) {
 		}
 	}
 	// 通过则没有障碍物
+	return true
+}
+function noBlockVertical (col, row1, row2, board) {
+	for (var i = row1 + 1; i < row2; i++) {
+		if (board[i][col] != 0) { return false }
+	}
 	return true
 }
 

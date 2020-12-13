@@ -2,9 +2,33 @@ var board = new Array()
 var score = 0
 var hasConficted = new Array() // 解决多次叠加问题
 
+var startx = 0
+var starty = 0
+var endx = 0
+var endy = 0
+
+
 $(document).ready(function () {
+	prepareForMobile()
 	newgame()
 })
+function prepareForMobile () {
+	// 对大屏幕的设定,不希望过大
+	if (documentWidth > 500) {
+		gridContainerWidth = 500
+		cellSpace = 20
+		cellSideLength = 100
+	}
+
+	$('#grid-container').css('width', gridContainerWidth - 2 * cellSpace)
+	$('#grid-container').css('height', gridContainerWidth - 2 * cellSpace)
+	$('#grid-container').css('padding', cellSpace)
+	$('#grid-container').css('border-radius', 0.02 * gridContainerWidth)
+
+	$('.grid-cell').css('width', cellSideLength)
+	$('.grid-cell').css('height', cellSideLength)
+	$('.grid-cell').css('border-radius', 0.02 * cellSideLength)
+}
 
 function newgame () {
 	// 初始化棋盘格的位置
@@ -52,9 +76,12 @@ function updateBoardView () {
 			if (board[i][j] == 0) {
 				theNumberCell.css('width', '0px')
 				theNumberCell.css('height', '0px')
+				theNumberCell.css('top', getPosTop(i) / 2)
+				theNumberCell.css('left', getPosTop(j) / 2)
+
 			} else {
-				theNumberCell.css('width', '100px')
-				theNumberCell.css('height', '100px')
+				theNumberCell.css('width', cellSideLength)
+				theNumberCell.css('height', cellSideLength)
 				theNumberCell.css('top', getPosTop(i))
 				theNumberCell.css('left', getPosLeft(j))
 				theNumberCell.css('background-color', getNumberBackgroundColor(board[i][j]))
@@ -63,6 +90,10 @@ function updateBoardView () {
 			}
 			hasConficted[i][j] = false;
 		}
+		// 所有格子通用的属性
+		$('.number-cell').css('line-height', cellSideLength + 'px')
+		$('.number-cell').css('font-size', 0.6 * cellSideLength + 'px')
+
 	}
 }
 
@@ -107,10 +138,11 @@ function generateOneNumber () {
 }
 
 // 游戏循环
-$(document).keyup(function (e) {
+$(document).keydown(function (e) {
 	switch (e.keyCode) {
 		case 37: // left
 			if (moveLeft()) {
+				e.preventDefault() // 阻止默认效果,防止滚动条滚动(写在这里是为了后续如果要添加按键效果时可以执行)
 				// 避免没upate完就生成新数字,避免生成最后数组之前就显示结束
 				// generateOneNumber()
 				setTimeout('generateOneNumber()', 210)
@@ -119,18 +151,21 @@ $(document).keyup(function (e) {
 			break
 		case 38: // up
 			if (moveUp()) {
+				e.preventDefault()
 				setTimeout('generateOneNumber()', 210)
 				setTimeout('isgameover()', 300)
 			}
 			break
 		case 39: // right
 			if (moveRight()) {
+				e.preventDefault()
 				setTimeout('generateOneNumber()', 210)
 				setTimeout('isgameover()', 300)
 			}
 			break
 		case 40: // down
 			if (moveDown()) {
+				e.preventDefault()
 				setTimeout('generateOneNumber()', 210)
 				setTimeout('isgameover()', 300)
 			}
@@ -140,9 +175,55 @@ $(document).keyup(function (e) {
 	}
 })
 
-// 移动条件:1,有空格 2,数字相等&&目标位没有发生过碰撞
+document.addEventListener('touchstart', function (e) {
+	startx = e.touches[0].pageX
+	starty = e.touches[0].pageY
+})
+
+// 解决安卓滑动上的一个bug
+document.addEventListener('touchmove',function(e){
+	e.preventDefault()
+})
+
+document.addEventListener('touchend', function (e) {
+	endx = e.changedTouches[0].pageX
+	endy = e.changedTouches[0].pageY
+
+	var deltax = endx - startx
+	var deltay = endy - starty
+
+	// 滑动范围过小时不触发事件
+	if (Math.abs(deltax) < 0.3 * documentWidth && Math.abs(deltay) < 0.2 * documentWidth) { return }
+
+	if (Math.abs(deltax) >= Math.abs(deltay)) {
+		if (deltax > 0) {
+			if (moveRight()) {
+				setTimeout('generateOneNumber()', 210)
+				setTimeout('isgameover()', 300)
+			}
+		} else {
+			if (moveLeft()) {
+				setTimeout('generateOneNumber()', 210)
+				setTimeout('isgameover()', 300)
+			}
+		}
+	} else {
+		if (deltay > 0) {
+			if (moveDown()) {
+				setTimeout('generateOneNumber()', 210)
+				setTimeout('isgameover()', 300)
+			}
+		} else {
+			if (moveUp()) {
+				setTimeout('generateOneNumber()', 210)
+				setTimeout('isgameover()', 300)
+			}
+		}
+	}
+})
+
+// 移动条件:1,有空格 2,数字相等&&中间没有阻碍格&&目标位没有发生过碰撞
 function moveLeft () {
-	console.log('hhh')
 	//  判断是否可以左移
 	if (!canMoveLeft(board)) {
 		return false
@@ -188,7 +269,12 @@ function moveUp () {
 		for (var j = 0; j < 4; j++) {
 			if (board[i][j] != 0) {
 				for (var k = 0; k < i; k++) {
-					if (board[k][j] == 0 || (board[k][j] == board[i][j] && !hasConficted[i][k])) {
+					if (board[k][j] == 0) {
+						showMoveAnimation(i, j, k, j)
+						board[k][j] = board[i][j]
+						board[i][j] = 0
+
+					} else if (board[k][j] == board[i][j] && noBlockVertical(j, k, i, board) && !hasConficted[i][k]) {
 						showMoveAnimation(i, j, k, j)
 						board[k][j] += board[i][j]
 						board[i][j] = 0
@@ -214,7 +300,11 @@ function moveDown () {
 		for (var j = 0; j < 4; j++) {
 			if (board[i][j] != 0) {
 				for (var k = 3; k > i; k--) {
-					if (board[k][j] == 0 || (board[k][j] == board[i][j] && !hasConficted[i][k])) {
+					if (board[k][j] == 0) {
+						showMoveAnimation(i, j, k, j)
+						board[k][j] = board[i][j]
+						board[i][j] = 0
+					} else if (board[k][j] == board[i][j] && noBlockVertical(j, i, k, board) && !hasConficted[i][k]) {
 						showMoveAnimation(i, j, k, j)
 						board[k][j] += board[i][j]
 						board[i][j] = 0
@@ -237,7 +327,12 @@ function moveRight () {
 		for (var j = 2; j > -1; j--) {
 			if (board[i][j] != 0) {
 				for (var k = 3; k > j; k--) {
-					if (board[i][k] == 0 || (board[i][k] == board[i][j] && !hasConficted[i][k])) {
+					if (board[i][k] == 0) {
+						showMoveAnimation(i, j, i, k)
+						board[i][k] = board[i][j]
+						board[i][j] = 0
+						continue
+					} else if ((board[i][k] == board[i][j] && noBlockHorizontal(i, j, k, board) && !hasConficted[i][k])) {
 						showMoveAnimation(i, j, i, k)
 						board[i][k] += board[i][j]
 						board[i][j] = 0

@@ -6,8 +6,8 @@ function showNumberWithAnimation (i, j, randNumber) {
 
 	//动画效果
 	numberCell.animate({
-		width: "100px",
-		height: "100px",
+		width: cellSideLength,
+		height: cellSideLength,
 		// 原本是0的数字格定位是0，0
 		top: getPosTop(i),
 		left: getPosLeft(j)
